@@ -1,0 +1,363 @@
+<!-- INÍCIO DO SIMULADOR 2ª LEI -->
+<h1 style="text-align: center;">Simulador: Segunda Lei de Kepler - Lei das Áreas</h1>
+
+<div id="simuladorKepler2Lei" style="background: #000; padding: 30px; border-radius: 10px; margin: 20px 0;">
+    
+    <canvas id="canvas2LeiKepler" width="1100" height="800" style="display: block; margin: 0 auto 20px; border: 2px solid #667eea; border-radius: 10px; background: #000; max-width: 100%;"></canvas>
+    
+    <div style="text-align: center; margin: 25px 0;">
+        <button onclick="iniciar2Lei()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 30px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin: 8px;">▶️ Iniciar</button>
+        <button onclick="pausar2Lei()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 30px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin: 8px;">⏸️ Pausar</button>
+        <button onclick="resetar2Lei()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 30px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin: 8px;">🔄 Reiniciar</button>
+        <button onclick="toggleAreas()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 14px 30px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin: 8px;">Mostrar/Ocultar Áreas</button>
+    </div>
+    
+    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 2px solid #667eea; margin: 20px 0;">
+        <h3 style="color: #667eea; margin-bottom: 15px;">Ajustar Excentricidade da Órbita</h3>
+        
+        <div style="margin: 15px 0;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: white;">
+                <span>Excentricidade:</span>
+                <span id="valEcc2Lei" style="background: rgba(102,126,234,0.3); padding: 5px 12px; border-radius: 8px; font-weight: bold;">0.017</span>
+            </div>
+            <input type="range" id="sliderEcc2Lei" min="0" max="999" value="17" oninput="document.getElementById('valEcc2Lei').textContent = (this.value/1000).toFixed(3); atualizar2Lei();" style="width: 100%; height: 8px; border-radius: 5px; background: rgba(255,255,255,0.3); cursor: pointer;">
+            <p style="font-size: 0.9em; color: #ccc; margin-top: 8px;">
+                0.000 = círculo perfeito | 0.999 = muito alongada
+            </p>
+        </div>
+        
+        <div style="margin: 15px 0;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: white;">
+                <span>Ângulo da Área (graus):</span>
+                <span id="valAngulo2Lei" style="background: rgba(102,126,234,0.3); padding: 5px 12px; border-radius: 8px; font-weight: bold;">20°</span>
+            </div>
+            <input type="range" id="sliderAngulo2Lei" min="5" max="60" value="20" oninput="document.getElementById('valAngulo2Lei').textContent = this.value + '°'; atualizar2Lei();" style="width: 100%; height: 8px; border-radius: 5px; background: rgba(255,255,255,0.3); cursor: pointer;">
+            <p style="font-size: 0.9em; color: #ccc; margin-top: 8px;">
+                Ajuste o tamanho das áreas para calcular velocidades diferentes
+            </p>
+        </div>
+    </div>
+    
+    <div style="background: rgba(255,255,255,0.95); color: #333; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h4 style="color: #667eea; margin-bottom: 15px;">📊 Dados da Órbita ao longo da Simulação</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div style="padding: 12px; border-radius: 8px; background: rgba(74,144,226,0.2); border-left: 4px solid #4A90E2;">
+                <strong style="color: #4A90E2;">Velocidade Atual:</strong><br>
+                <span id="velocidadeKmH" style="font-size: 1.3em; font-weight: bold;">108.000</span> km/h
+            </div>
+            <div style="padding: 12px; border-radius: 8px; background: rgba(118,75,162,0.2); border-left: 4px solid #764ba2;">
+                <strong style="color: #764ba2;">Posição:</strong><br>
+                <span id="posicaoAtual" style="font-size: 1.1em; font-weight: bold;">Próximo ao Sol</span>
+            </div>
+        </div>
+        <div style="margin-top: 15px; padding: 15px; background: rgba(255,243,205,0.5); border-radius: 8px; border-left: 4px solid #ffc107;">
+            <p style="margin: 0; color: #333;">
+                <strong>💡 Observe:</strong> As áreas azul (perto do Sol) e verde (longe do Sol) são <strong>iguais</strong>, mas o planeta percorre distâncias diferentes! Isso significa que ele se move <strong>mais rápido</strong> perto do Sol e <strong>mais devagar</strong> longe dele.
+            </p>
+        </div>
+    
+</div>
+
+<script>
+window.dados2Lei = {
+    canvas: null,
+    ctx: null,
+    animando: false,
+    animId: null,
+    angulo: 0,
+    mostrarAreas: true,
+    anguloArea: 20, // em graus
+    planeta: { 
+        ecc: 0.017, 
+        eixo: 250, 
+        cor: '#4A90E2', 
+        tam: 14 
+    },
+    solX: 0,
+    solY: 0,
+    tempo: 0,
+    ultimaPosicao: null
+};
+
+window.inicializar2Lei = function() {
+    window.dados2Lei.canvas = document.getElementById('canvas2LeiKepler');
+    if (!window.dados2Lei.canvas) {
+        setTimeout(window.inicializar2Lei, 100);
+        return;
+    }
+    
+    window.dados2Lei.ctx = window.dados2Lei.canvas.getContext('2d');
+    window.dados2Lei.solX = window.dados2Lei.canvas.width / 2 - 50;
+    window.dados2Lei.solY = window.dados2Lei.canvas.height / 2;
+    
+    window.desenhar2Lei();
+};
+
+window.atualizar2Lei = function() {
+    var e = parseFloat(document.getElementById('sliderEcc2Lei').value) / 1000;
+    var ang = parseFloat(document.getElementById('sliderAngulo2Lei').value);
+    window.dados2Lei.planeta.ecc = e;
+    window.dados2Lei.anguloArea = ang;
+    window.desenhar2Lei();
+};
+
+window.desenharEstrelas2Lei = function(ctx, w, h) {
+    for (var i = 0; i < 150; i++) {
+        var x = Math.random() * w;
+        var y = Math.random() * h;
+        var br = Math.random() * 0.8 + 0.2;
+        ctx.fillStyle = 'rgba(255,255,255,' + br + ')';
+        ctx.fillRect(x, y, 2, 2);
+    }
+};
+
+window.desenharSol2Lei = function(ctx, x, y) {
+    ctx.fillStyle = '#FDB813';
+    ctx.beginPath();
+    ctx.arc(x, y, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = '#FDB813';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    for (var i = 0; i < 12; i++) {
+        var ang = i * Math.PI / 6;
+        ctx.strokeStyle = 'rgba(253,184,19,0.4)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(ang) * 50, y + Math.sin(ang) * 50);
+        ctx.stroke();
+    }
+    
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 5;
+    ctx.fillText('SOL', x, y + 55);
+    ctx.shadowBlur = 0;
+};
+
+window.desenhar2Lei = function() {
+    if (!window.dados2Lei.ctx) return;
+    
+    var ctx = window.dados2Lei.ctx;
+    var w = window.dados2Lei.canvas.width;
+    var h = window.dados2Lei.canvas.height;
+    var planeta = window.dados2Lei.planeta;
+    var angulo = window.dados2Lei.angulo;
+    
+    ctx.clearRect(0, 0, w, h);
+    window.desenharEstrelas2Lei(ctx, w, h);
+    
+    var a = planeta.eixo;
+    var e = planeta.ecc;
+    var c = a * e;
+    var b = Math.sqrt(a * a - c * c);
+    
+    var cX = window.dados2Lei.solX + c;
+    var cY = window.dados2Lei.solY;
+    
+    // Desenhar órbita
+    ctx.strokeStyle = planeta.cor + '60';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cX, cY, a, b, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Desenhar áreas se ativado
+    if (window.dados2Lei.mostrarAreas) {
+        var anguloAreaRad = window.dados2Lei.anguloArea * Math.PI / 180;
+        
+        // Área 1 (perto do Sol - periélio) - AZUL
+        ctx.fillStyle = 'rgba(102, 126, 234, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(window.dados2Lei.solX, window.dados2Lei.solY);
+        var anguloInicial = Math.PI;
+        var anguloFinal = Math.PI + anguloAreaRad;
+        for (var ang = anguloInicial; ang <= anguloFinal; ang += 0.01) {
+            var px = cX + a * Math.cos(ang);
+            var py = cY + b * Math.sin(ang);
+            ctx.lineTo(px, py);
+        }
+        ctx.lineTo(window.dados2Lei.solX, window.dados2Lei.solY);
+        ctx.fill();
+        
+        // Calcular ponto médio da área 1 para legenda
+        var angMedio1 = Math.PI + anguloAreaRad / 2;
+        var raioLegenda1 = a * 0.5;
+        var legX1 = cX + raioLegenda1 * Math.cos(angMedio1);
+        var legY1 = cY + b * 0.5 * Math.sin(angMedio1);
+        
+        // Área 2 (longe do Sol - afélio) - VERDE
+        ctx.fillStyle = 'rgba(76, 175, 80, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(window.dados2Lei.solX, window.dados2Lei.solY);
+        var anguloInicial2 = 0;
+        var anguloFinal2 = anguloAreaRad * 0.52; // Ajustado para área igual
+        for (var ang = anguloInicial2; ang <= anguloFinal2; ang += 0.01) {
+            var px = cX + a * Math.cos(ang);
+            var py = cY + b * Math.sin(ang);
+            ctx.lineTo(px, py);
+        }
+        ctx.lineTo(window.dados2Lei.solX, window.dados2Lei.solY);
+        ctx.fill();
+        
+        // Calcular ponto médio da área 2 para legenda
+        var angMedio2 = anguloFinal2 / 2;
+        var raioLegenda2 = a * 0.5;
+        var legX2 = cX + raioLegenda2 * Math.cos(angMedio2);
+        var legY2 = cY + b * 0.5 * Math.sin(angMedio2);
+        
+        // Legendas das áreas (FORA da órbita)
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 14px Arial';
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 6;
+        
+        // Legenda Área 1 (esquerda, abaixo da órbita)
+        var legFinalX1 = cX - a - 30;
+        var legFinalY1 = cY + 50;
+        ctx.fillText('ÁREA 1', legFinalX1, legFinalY1);
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('(rápido)', legFinalX1, legFinalY1 + 18);
+        
+        // Seta apontando para área 1
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(legX1, legY1);
+        ctx.lineTo(legFinalX1 + 30, legFinalY1 - 5);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Legenda Área 2 (direita, abaixo da órbita)
+        ctx.font = 'bold 14px Arial';
+        var legFinalX2 = cX + a - 20;
+        var legFinalY2 = cY + 50;
+        ctx.fillText('ÁREA 2', legFinalX2, legFinalY2);
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('(lento)', legFinalX2, legFinalY2 + 18);
+        
+        // Seta apontando para área 2
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(legX2, legY2);
+        ctx.lineTo(legFinalX2 + 30, legFinalY2 - 5);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.shadowBlur = 0;
+    }
+    
+    // Posição do planeta
+    var px = cX + a * Math.cos(angulo);
+    var py = cY + b * Math.sin(angulo);
+    
+    // Calcular velocidade baseada na distância (em km/h)
+    var dist = Math.sqrt((px - window.dados2Lei.solX) ** 2 + (py - window.dados2Lei.solY) ** 2);
+    var maxDist = a + c;
+    var minDist = a - c;
+    
+    // Velocidade em km/h (variando entre ~180.000 km/h perto do Sol e ~72.000 km/h longe)
+    var velocidadeBase = 50 - ((dist - minDist) / (maxDist - minDist)) * 30;
+    var velocidadeKmH = Math.round(velocidadeBase * 3600);
+    
+    // Atualizar display
+    document.getElementById('velocidadeKmH').textContent = velocidadeKmH.toLocaleString('pt-BR');
+    
+    if (dist < (minDist + maxDist) / 2) {
+        document.getElementById('posicaoAtual').textContent = 'Próximo ao Sol (RÁPIDO)';
+    } else {
+        document.getElementById('posicaoAtual').textContent = 'Longe do Sol (LENTO)';
+    }
+    
+    // Raio vetor
+    ctx.strokeStyle = 'rgba(255, 255, 100, 0.6)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(window.dados2Lei.solX, window.dados2Lei.solY);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Planeta
+    ctx.fillStyle = planeta.cor;
+    ctx.beginPath();
+    ctx.arc(px, py, planeta.tam, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(px, py, planeta.tam + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Label do planeta
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 5;
+    ctx.fillText('Planeta', px, py + planeta.tam + 22);
+    ctx.shadowBlur = 0;
+    
+    window.desenharSol2Lei(ctx, window.dados2Lei.solX, window.dados2Lei.solY);
+};
+
+window.animar2Lei = function() {
+    if (!window.dados2Lei.animando) return;
+    
+    window.desenhar2Lei();
+    
+    var a = window.dados2Lei.planeta.eixo;
+    var e = window.dados2Lei.planeta.ecc;
+    var c = a * e;
+    var cX = window.dados2Lei.solX + c;
+    var cY = window.dados2Lei.solY;
+    var b = Math.sqrt(a * a - c * c);
+    
+    var px = cX + a * Math.cos(window.dados2Lei.angulo);
+    var py = cY + b * Math.sin(window.dados2Lei.angulo);
+    var dist = Math.sqrt((px - window.dados2Lei.solX) ** 2 + (py - window.dados2Lei.solY) ** 2);
+    var velocidadeAngular = 0.012 * (a / dist);
+    
+    window.dados2Lei.angulo += velocidadeAngular;
+    window.dados2Lei.animId = requestAnimationFrame(window.animar2Lei);
+};
+
+window.iniciar2Lei = function() {
+    window.dados2Lei.animando = true;
+    window.animar2Lei();
+};
+
+window.pausar2Lei = function() {
+    window.dados2Lei.animando = false;
+    if (window.dados2Lei.animId) cancelAnimationFrame(window.dados2Lei.animId);
+};
+
+window.resetar2Lei = function() {
+    window.dados2Lei.angulo = 0;
+    window.pausar2Lei();
+    window.desenhar2Lei();
+};
+
+window.toggleAreas = function() {
+    window.dados2Lei.mostrarAreas = !window.dados2Lei.mostrarAreas;
+    window.desenhar2Lei();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.inicializar2Lei);
+} else {
+    setTimeout(window.inicializar2Lei, 100);
+}
+</script>
+
+<!-- FIM DO SIMULADOR 2ª LEI -->
